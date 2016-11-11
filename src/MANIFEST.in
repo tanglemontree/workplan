@@ -1,0 +1,3 @@
+#MAINIFEST.in
+include *.txt
+recursive-include base *
