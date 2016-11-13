@@ -3,16 +3,22 @@ __author__ = 'sun'
 from . import dataproc,udprecvthd,udpsendthd
 from base import net_data,datapack,sys_para
 from time import sleep
+from user import user,usermng
 class netmng():
     def create(self):
         self._dataproc = dataproc.dataproc()
         self._dataproc.start()
-        self._recvthd = udprecvthd.udprecvthd(self._dataproc)
-        self._recvthd.start()
-        sleep(1)
 
         self._sendthd = udpsendthd.udpsendthd()
         self._sendthd.start()
+        sleep(1)
+        self._recvthd = udprecvthd.udprecvthd(self._dataproc)
+        self._dataproc.setthread(recv = self._recvthd,send = self._sendthd)
+        self._recvthd.start()
+
+
+
+
 
         dpack = datapack()
         xdoc = ''' <datapack>
@@ -63,10 +69,19 @@ class netmng():
         data = net_data(sys_para.NET_GROUPADDR,sys_para.NET_DESTPORT,dpack.formatxml().encode('utf-8'),False)
         self._sendthd.write(data)
         print('send over')
+    def sendofflineinfo(self):
+        dpack = datapack(username = usermng.instance().getadmin().name,
+                         nickname = usermng.instance().getadmin().nickname,
+                         type = en_dp_type.connectstatus.name,constdef.OFFLINE)
+        data = net_data(sys_para.NET_GROUPADDR,sys_para.NET_DESTPORT,dpack.formatxml().decode('utf-8'),False)
+        if self._sendthd is not None:
+            self._sendthd.write(data)
     def exit(self):
+        self.sendofflineinfo()
         self._sendthd.stop()
         self._recvthd.stop()
         self._dataproc.stop()
+
 
 
 

@@ -14,6 +14,7 @@ class user():
         self.nickname = nickname.strip()
         self.ip = ip.strip()
         self.online = online
+        self.datestamp = datetime.now().date()
     """
     data = datapack
     """
@@ -26,6 +27,7 @@ class user():
             else:
                 self.online = True
         self.ip = data.ip
+        self.timestamp = datetime.now()
 class usermng():
     def __init__(self):
         global __have_usermng_instance,__usermng_instance__
@@ -33,7 +35,6 @@ class usermng():
             return
         self._userlist = []
         self.admin = None #本机用户
-        self.savetime = datetime.now()
         __have_usermng_instance = True
     @staticmethod
     def instance():
@@ -42,8 +43,10 @@ class usermng():
             if os.path.exists(mpath.inistance().getconfigpath()+'user.dat') == False:
                 __usermng_instance__ = usermng()
             else:
-                with open(mpath.inistance().getconfigpath()+ 'user.dat','rb') as f:
+                with open(mpath.inistance().getconfigpath()+ 'user.dat','rwb') as f:
                     __usermng_instance__ = pickle.load(f)
+                    __usermng_instance__.filtervalid()
+                    pickle.dump(__usermng_instance__,f)
                 f.close()
         return __usermng_instance__
     def setadmin(self,_user):
@@ -52,7 +55,6 @@ class usermng():
     def getadmin(self):
         return self.admin
     def writetofile(self):
-        self.savetime = datetime.now()
         global __usermng_instance__
         with open(mpath.inistance().getconfigpath()+'user.dat','wb') as f:
             pickle.dump(__usermng_instance__,f)
@@ -80,6 +82,12 @@ class usermng():
         quser = self._query(user)
         if quser != None:
             self._userlist.remove(quser)
+    def filtervalid(self):#这个函数只能在inistance函数内调用
+        ul = [i for i in self._userlist if datetime.now().date() - i.datestamp < 30]
+        #30天内的用户信息是有效的
+        for u in ul:
+            u.online = False #初始化时都置为false
+        self._userlist = ul
     def _query(self,_user):
         user = copy.copy(_user)
         for iu in self._userlist:

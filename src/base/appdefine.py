@@ -22,6 +22,7 @@ class sys_para():
     NET_GROUPADDR = '231.22.33.44'
     NET_BUFSIZE = 20000
 
+
 def prettystr(element,iencoding = None):
 
     rough_string = ElementTree.tostring(element,'utf-8')
@@ -37,6 +38,7 @@ class net_data:
 datapack: application data pack transfer on net
 """
 class datapack:
+
     def __init__(self,username='',nickname = '',type=None,body=''):
         self.username = username
         self.nickname = nickname
