@@ -6,7 +6,7 @@ import sys, os,io,traceback
 __loglevel__ = logging.DEBUG
 __logpath__ = 'logw.txt'
 __instance_mlog__ = None
-__havemlog_instance__ = False
+#__havemlog_instance__ = False
 DEBUG = logging.DEBUG
 INFO = logging.INFO
 WARN = logging.WARNING
@@ -38,14 +38,13 @@ _srcfile = os.path.normcase(setlog.__code__.co_filename)
 
 class mlog:
     def __init__(self):
-        global __instance_mlog__,__havemlog_instance__,__logpath__,__loglevel__
+        global __instance_mlog__,__logpath__,__loglevel__
         if __instance_mlog__ != None:
             return
         FORMAT = '%(asctime)-15s[%(modulename)s]%(message)s'
         logging.basicConfig(filename = __logpath__,level = __loglevel__,format = FORMAT)
         self._log = logging.getLogger()
         self.path = __logpath__
-        __havemlog_instance__ = True
      #   print('inst')
     def getpath(self):
         return self.path
@@ -53,9 +52,8 @@ class mlog:
         return self._log
     @staticmethod
     def instance():
-        global __havemlog_instance__
         global __instance_mlog__
-        if __haveinstance__ == False:
+        if __instance_mlog__ == None:
             __instance_mlog__ = mlog()
             print('create log')
         return __instance_mlog__

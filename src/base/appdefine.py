@@ -12,9 +12,14 @@ from log import mylog,mlog,setlog
 class constdef():
     ONLINE = 'ON'
     OFFLINE = 'OFFLINE'
+    ORG_ASKJION = 'askjoin'
+    ORG_RENAME = 'rename'
+    ORG_REMOVE = 'remove'
+
 class en_dp_type(Enum):
     connectstatus = 1
     workplan = 2
+    orginfo = 3
 
 class sys_para():
     NET_LOCALPORT = 12321
@@ -22,12 +27,16 @@ class sys_para():
     NET_GROUPADDR = '231.22.33.44'
     NET_BUFSIZE = 20000
 
+class ipaddress():
+    def __init__(self,ip,port):
+        self.ip = ip
+        self.port = port
 
 def prettystr(element,iencoding = None):
 
     rough_string = ElementTree.tostring(element,'utf-8')
     reparsed = minidom.parseString(rough_string)
-    return reparsed.toprettyxml(encoding= iencoding,indent="   ")
+    return reparsed.toprettyxml(encoding= iencoding,indent="   ",newl='\r\n')
 class net_data:
     def __init__(self,ip,port,data,brecv = True):
         self.ip = ip
@@ -42,6 +51,7 @@ class datapack:
     def __init__(self,username='',nickname = '',type=None,body=''):
         self.username = username
         self.nickname = nickname
+        self.ip = ''
         self.type = type
         self.body = body
         self.tag_body = 'data_body'
@@ -49,6 +59,7 @@ class datapack:
         self.tag_type = 'type'
         self.tag_nickname = 'nickname'
         self.__modulename = 'datapack'
+
     def parsenetdata(self,dnet_data):
         self.ip = dnet_data.ip
         self.parsexml(dnet_data.data.decode('utf-8'))
@@ -62,6 +73,7 @@ class datapack:
             else:
                 self.username = element.attrib.get(self.tag_username)
                 self.type = element.attrib.get(self.tag_type)
+                self.nickname = element.attrib.get(self.tag_nickname)
                 c = list(element)
                 if len(c) == 0:
                     self.body = element.text
@@ -69,8 +81,6 @@ class datapack:
                     for sub in c:
                         self.body = self.body + tostring(sub,'utf-8').decode('utf-8')
                         #TODO
-
-                self.nickname = element.attrib.get(self.tag_nickname)
                 return True
         except Exception as e:
             print('%s:%s'%(self.__modulename,e))
@@ -79,6 +89,7 @@ class datapack:
             return self.type,self.body
     def formatxml(self):
         top = Element('datapack')
+
         child = SubElement(top,self.tag_body,{
             self.tag_username:self.username,
             self.tag_nickname:self.nickname,

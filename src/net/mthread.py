@@ -26,7 +26,7 @@ class mthread(threading.Thread):
                 self.__secqueue.put(self.__revqueue.get(1))
             if self.__secqueue.empty():
                 sleep(0.05)
-                pass
+                continue
             while self.__secqueue.qsize() > 0:
                 self._processfunc(self.__secqueue.get(1))
                # print(' read qsize')

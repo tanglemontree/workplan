@@ -12,7 +12,7 @@ class udpsendthd(mthread.mthread,psocket.udpsocket):
         self.__name =  'udpsendthread'
         mthread.mthread.__init__(self,self.__senddata,sys_para.NET_BUFSIZE)
         psocket.udpsocket.__init__(self)
-        self.set(psocket.getlocalip()[0],
+        self.set(psocket.getlocalip(),
                  sys_para.NET_LOCALPORT,
                  sys_para.NET_BUFSIZE,
                  sys_para.NET_GROUPADDR)

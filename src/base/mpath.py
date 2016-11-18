@@ -2,7 +2,6 @@ __author__ = 'Administrator'
 import os,io
 
 __instance_mpath__ = None
-__havempath_instance__ = False
 class mpath():
     def __init__(self):
         global __instance_mpath__,__havempath_instance__
@@ -13,13 +12,13 @@ class mpath():
         self._root = cwd.rstrip(cc[-1])
         self._log = self._root  + 'log'+ os.sep
         if not os.path.exists(self._log):
-            os.makedirs(self._log)
+            os.makedirs(self._log,0o755)
         self._data = self._root+ 'data' + os.sep
         if not os.path.exists(self._data):
-            os.makedirs(self._data)
+            os.makedirs(self._data,0o755)
         self._config = self._root + 'config' + os.sep
         if not os.path.exists(self._config):
-            os.makedirs(self._config)
+            os.makedirs(self._config,0o755)
         __havempath_instance__ = True
     @staticmethod
     def inistance():

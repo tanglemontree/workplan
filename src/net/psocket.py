@@ -28,7 +28,7 @@ class udpsocket:
      
     def send(self,destip,destport,data):
         self._sock.sendto(data,0,(destip,destport))
-    #    print('send %d bytes data = %s ip = %s port = %d' %(self._sock.sendto(data,0,(destip,destport)),data,destip,destport))
+  #      print('send %d bytes data = %s ip = %s port = %d' %(self._sock.sendto(data,0,(destip,destport)),data,destip,destport))
     def close(self):
         self._sock.close()
         print('udpsocket:over close socket')
@@ -48,8 +48,8 @@ class udpsocket:
 def getlocalip():
     hostname = gethostname()
     localip = gethostbyname(hostname)
-    return (localip,hostname)
-getlocalip()
+    return localip
+
 def main():
     a = udpsocket()
     a.set('192.170.41.210',24568,1000,'225.0.0.1')

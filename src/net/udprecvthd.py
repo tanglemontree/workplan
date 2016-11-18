@@ -12,7 +12,7 @@ class udprecvthd(mthread.mthread,psocket.udpsocket):
         mthread.mthread.__init__(self,self.recvdata,sys_para.NET_BUFSIZE)
         psocket.udpsocket.__init__(self)
         self._procthd = procdata
-        self.set(psocket.getlocalip()[0],
+        self.set(psocket.getlocalip(),
                  sys_para.NET_DESTPORT,
                  sys_para.NET_BUFSIZE,
                  sys_para.NET_GROUPADDR)
@@ -31,7 +31,7 @@ class udprecvthd(mthread.mthread,psocket.udpsocket):
             data,ip = self.recv()
             sleep(1)
             if data != None:
-                self._processfunc(net_data(ip,1000,data,True))
+                self._processfunc(net_data(ip[0],1000,data,True))
 
 
 def main():
