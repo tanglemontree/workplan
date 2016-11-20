@@ -17,6 +17,7 @@ class user():
         self.nickname = nickname.strip()
         self.addr = addr
         self.online = online
+        self.email = ''
         self.datestamp = datetime.now().date()
     """
     data = datapack
@@ -24,21 +25,20 @@ class user():
     def parsfromdata(self,data):
         self.name = data.username
         self.nickname = data.nickname
-
-        sxml = '<body>' + data.body + '</body>'
-        parser = XML(sxml)
+        parser = XML(data.body)
 
         if data.type == en_dp_type.connectstatus.name:
             if  parser.find('status').text  == constdef.OFFLINE:
                 self.online = False
             else:
                 self.online = True
+            self.email = parser.find('email').text.strip()
             nport = int(parser.find('port').text)
             self.addr = ipaddress(data.ip,nport)
         self.timestamp = datetime.now()
 class userlist():
     def __init__(self):
-        self._userlist = []
+        self.userlist = []
     def isuserexist(self,_user):
         user = copy.copy(_user)
         if self._query(user) != None:
@@ -49,27 +49,27 @@ class userlist():
         user = copy.copy(_user)
         if self.isuserexist(user) == True:
             nIndex = 0
-            for iu in self._userlist:
+            for iu in self.userlist:
                 if iu.name == user.name:
-                    self._userlist[nIndex] = user
+                    self.userlist[nIndex] = user
                     return
                 nIndex +=1
         else:
-            self._userlist.append(user)
+            self.userlist.append(user)
     def remove(self,_user):
         user = copy.copy(_user)
         quser = self._query(user)
         if quser != None:
-            self._userlist.remove(quser)
+            self.userlist.remove(quser)
     def filtervalid(self):#这个函数只能在inistance函数内调用
-        ul = [i for i in self._userlist if (datetime.now().date() - i.datestamp).days < 30]
+        ul = [i for i in self.userlist if (datetime.now().date() - i.datestamp).days < 30]
         #30天内的用户信息是有效的
         for u in ul:
             u.online = False #初始化时都置为false
-        self._userlist = ul
+        self.userlist = ul
     def _query(self,_user):
         user = copy.copy(_user)
-        for iu in self._userlist:
+        for iu in self.userlist:
             if iu.name == user.name:
                 return iu
         return None
@@ -80,7 +80,7 @@ class userlist():
     def querybyip(self,ip):
         return self._query(user('','',ip))
     def list(self):
-        return self._userlist
+        return self.userlist
 class usermng(userlist):
     def __init__(self):
         global __usermng_instance__
@@ -88,6 +88,7 @@ class usermng(userlist):
             return
         self._admin = None #本机用户
         self._path = 'user.dat'
+        userlist.__init__(self)
     @staticmethod
     def instance():
         global __usermng_instance__
@@ -130,26 +131,29 @@ class orgmng():
         return self._orgmap
     def addorg(self,org):
         self._orgmap[org.name] = org
+        self.writetofile()
     def queryorg(self,orgname):
-        if self._orgmap.keys().count(orgmng) == 0:
+        if self._orgmap.get(orgname) is None:
             return None
         else:
             return self._orgmap[orgname]
     def adduser(self,orgname,_user):
-        if self._orgmap.keys().count(orgname) == 0:
+        if self._orgmap.get(orgname) is None:
             return False
         else:
             self._orgmap[orgname].userlist.add(_user)
+            self.writetofile()
             return True
     def removeuser(self,orgname,_user):
-        if self._orgmap.keys().count(orgname) == 0:
+        if self._orgmap.get(orgname) is None:
             return False
         else:
             self._orgmap[orgname].userlist.remove(_user)
+            self.writetofile()
             return True
 
     def getuserlist(self,orgname):
-        if self._orgmap.keys().count(orgname) == 0:
+        if self._orgmap.get(orgname) is None:
             return None
         else:
             return self._orgmap[orgname].userlist
@@ -159,16 +163,16 @@ class orgmng():
         _path = mpath.inistance().getdatapath()+ 'orgnization.dat'
         global  __orgmng_instance__
         if __orgmng_instance__ == None:
-            if os.path.exists(_path)  == False:
-                __orgmng_instance__ = orgmng()
-            else:
-                with open(_path,'wb') as f:
-                    __orgmng_instance__ = pickle.load(f)
+            __orgmng_instance__ = orgmng()
+            if os.path.exists(_path)  == True:
+                with open(_path,'rb') as f:
+                    print(_path)
+                    __orgmng_instance__._orgmap = pickle.load(f)
                     f.close()
         return __orgmng_instance__
     def writetofile(self):
         with open(self._path,'wb') as f:
-            pickle.dump(__orgmng_instance__,f)
+            pickle.dump(self._orgmap,f)
             f.close()
 def test():
     um = usermng()

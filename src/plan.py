@@ -20,6 +20,129 @@ PLAN_REPLY = 'reply'
 __curplanlist_instance__ = None
 __backplanlist_onstance__ = None
 
+
+class plan():
+    def __init__(self):
+        self.producer = ''
+        self.id = ''
+        self.type = None
+        self.name = ''
+        self.description = ''
+        self.start = None
+        self.end = None
+        self.boss = ''
+        self.teammates = []
+        self.progress = 0
+        self.report = []
+        self.orgname = ''
+        self._tagorgname = 'orgname'
+        self._tagproducer = 'producer'
+        self._tagid = 'id'
+        self._tagtype = 'type'
+        self._tagname = 'name'
+        self._tagdescription = 'description'
+        self._tagstart = 'start'
+        self._tagend = 'end'
+        self._tagboss = 'boss'
+        self._tagteammate = 'teammate'
+        self._tagprogress = 'progress'
+        self._tagreport = 'report'
+
+    def setid(self):#只有在生成计划时才需要调用，后续该计划的操作不能再调用该函数，id是计划唯一标识
+        self.id = str(uuid.uuid1())
+    def tostring(self):
+        mates = ''
+        for i in self.teammates:
+            mates = mates + i + ','
+        return 'producer:' + self.producer + '  id=' + self.id + '  起止时间:' + self.start.strftime('%y-%m-%d') + \
+            '  ' + self.end.strftime('%y-%m-%d') + '\r\n        名字:' + self.name + '  内容:'+self.description + \
+            '  boss:' + self.boss + ' mates:' + mates + ' progess:' + str(self.progress)
+    def isboss(self,name):
+        if self.boss == name.strip():
+            return True
+        else:
+            return False
+    def isproducer(self,name):
+        if self.producer == name.strip():
+            return True
+        else:
+            return False
+    def addreport(self,plan):
+        self.progress = plan.progress
+        self.report = self.report + plan.report
+    def isteammate(self,name):
+        if self.teammates.count(name.strip()) > 1:
+            return True
+        else:
+            return False
+    def formatxml(self):
+        try:
+            top = Element('plan')
+            if len(self.orgname) > 0:
+                SubElement(top,self._tagorgname).text = self.orgname
+            SubElement(top,self._tagproducer).text = self.producer
+            SubElement(top,self._tagid).text = str(self.id)
+            SubElement(top,self._tagtype).text = self.type
+            SubElement(top,self._tagname).text = self.name
+            SubElement(top,self._tagdescription).text = self.description
+            SubElement(top,self._tagstart).text = self.start.strftime('%y-%m-%d')
+            SubElement(top,self._tagend).text = self.end.strftime('%y-%m-%d')
+            SubElement(top,self._tagboss).text = self.boss
+
+            for mate in self.teammates:
+                SubElement(top,self._tagteammate).text = mate
+            SubElement(top,self._tagprogress).text = str(self.progress)
+            if self.type == PLAN_REPORT:
+                for report in self.report:
+                    SubElement(top,self._tagreport).text = report
+            return tostring(top,'utf-8').decode('utf-8')
+        except Exception as e:
+            lerror('',str(e))
+            return ''
+
+    def parsexml(self, parser):
+        try:
+            self.id = parser.find(self._tagid).text.strip()
+            self.type = parser.find(self._tagtype).text.strip().lower()
+            if parser.find(self._tagorgname) is not None:
+                self.orgname = parser.find(self._tagorgname).text.strip()
+            if self.type == PLAN_REPORT:
+                self.report.append(datetime.now().date().strftime('%y-%m-%d:') + parser.find(self._tagreport).text.strip())
+                self.progress = int(parser.find(self._tagprogress).text.strip())
+                if self.progress > 100:
+                    self.progress = 100
+                elif self.progress < 0:
+                    self.progress = 0
+                return True
+            elif self.type == PLAN_REPLY:
+                return True
+
+            self.producer = parser.find(self._tagproducer).text.strip()
+            self.name = parser.find(self._tagname).text.strip()
+            self.description = parser.find(self._tagdescription).text.strip()
+            strdate = str(parser.find(self._tagstart).text.strip())
+            for strdate in [parser.find(self._tagstart).text.strip(),parser.find(self._tagend).text.strip()]:
+                if re.match('\d\d-[0-1]?[0-9]-[0-1]?[0-9]',strdate) is None:
+                    lerror('',('plan date format is wrong(%s),right format is yy-mm-dd. ' % strdate))
+                    return False
+            self.start = datetime.datetime.strptime(parser.find(self._tagstart).text.strip(),"%y-%m-%d")
+            #strptime只接受年为两位，0-68就是20XX，69-99就是19XX
+            self.end = datetime.datetime.strptime(parser.find(self._tagend).text.strip(),"%y-%m-%d")
+            if self.start > self.end:
+                lerror('','开始时间晚于结束时间')
+                return False
+            self.boss = parser.find(self._tagboss).text.strip()
+            element = parser.findall(self._tagteammate)
+            self.teammates = []
+            for child in element:
+                self.teammates.append(child.text.strip())
+            return True
+        except Exception as e:
+            lerror('',str(e))
+            return False
+
+
+
 class planlist():
     def __init__(self,planname):
         self._planlist = []
@@ -47,11 +170,11 @@ class planlist():
         else:
             index = -1
         return index
-    def edit(self,pl):
-        plan = copy.deepcopy(pl)
-        index = self._index(plan)
+    def edit(self,pl:plan):
+        _plan = copy.deepcopy(pl)
+        index = self._index(_plan)
         if  index>= 0:
-            self._planlist[index] = plan
+            self._planlist[index] = _plan
             return True
         else:
             return False
@@ -155,129 +278,12 @@ class totalplans():
         plans = query(curplans.instance().list(),start,end) + query(backplans.instance().list(),start,end)
         plans.sort(key = cmp_to_key(cp))
         return plans
-
-
-
-
-
-class plan():
-    def __init__(self):
-        self.producer = ''
-        self.id = ''
-        self.type = None
-        self.name = ''
-        self.description = ''
-        self.start = None
-        self.end = None
-        self.boss = ''
-        self.teammates = []
-        self.progress = 0
-        self.report = []
-        self.orgname = ''
-        self._tagorgname = 'orgname'
-        self._tagproducer = 'producer'
-        self._tagid = 'id'
-        self._tagtype = 'type'
-        self._tagname = 'name'
-        self._tagdescription = 'description'
-        self._tagstart = 'start'
-        self._tagend = 'end'
-        self._tagboss = 'boss'
-        self._tagteammate = 'teammate'
-        self._tagprogress = 'progress'
-        self._tagreport = 'report'
-
-    def setid(self):#只有在生成计划时才需要调用，后续该计划的操作不能再调用该函数，id是计划唯一标识
-        self.id = str(uuid.uuid1())
-    def tostring(self):
-        mates = ''
-        for i in self.teammates:
-            mates = mates + i + ','
-        return 'producer:' + self.producer + '  id=' + self.id + '  起止时间:' + self.start.strftime('%y-%m-%d') + \
-            '  ' + self.end.strftime('%y-%m-%d') + '\r\n        名字:' + self.name + '  内容:'+self.description + \
-            '  boss:' + self.boss + ' mates:' + mates + ' progess:' + str(self.progress)
-    def isboss(self,name):
-        if self.boss == name.strip():
-            return True
+    def queryplanbyid(self,id):
+        pl1 = curplans.instance().querybyid(id)
+        if pl1 is not None:
+            return pl1
         else:
-            return False
-    def isproducer(self,name):
-        if self.producer == name.strip():
-            return True
-        else:
-            return False
-    def addreport(self,plan):
-        self.progress = plan.progress
-        self.report = self.report + plan.report
-    def isteammate(self,name):
-        if self.teammates.count(name.strip()) > 1:
-            return True
-        else:
-            return False
-    def formatxml(self):
-        try:
-            top = Element('plan')
-            SubElement(top,self._tagorgname).text = self.orgname
-            SubElement(top,self._tagproducer).text = self.producer
-            SubElement(top,self._tagid).text = str(self.id)
-            SubElement(top,self._tagtype).text = self.type
-            SubElement(top,self._tagname).text = self.name
-            SubElement(top,self._tagdescription).text = self.description
-            SubElement(top,self._tagstart).text = self.start.strftime('%y-%m-%d')
-            SubElement(top,self._tagend).text = self.end.strftime('%y-%m-%d')
-            SubElement(top,self._tagboss).text = self.boss
-
-            for mate in self.teammates:
-                SubElement(top,self._tagteammate).text = mate
-            SubElement(top,self._tagprogress).text = str(self.progress)
-            if self.type == PLAN_REPORT:
-                for report in self.report:
-                    SubElement(top,self._tagreport).text = report
-            return tostring(top,'utf-8').decode('utf-8')
-        except Exception as e:
-            lerror('',str(e))
-            return ''
-
-    def parsexml(self, parser):
-        try:
-            self.id = parser.find(self._tagid).text.strip()
-            self.type = parser.find(self._tagtype).text.strip().lower()
-            if parser.find(self._tagorgname) is not None:
-                self.orgname = parser.find(self._tagorgname).text.strip()
-            if self.type == PLAN_REPORT:
-                self.report.append(datetime.now().date().strftime('%y-%m-%d:') + parser.find(self._tagreport).text.strip())
-                self.progress = int(parser.find(self._tagprogress).text.strip())
-                if self.progress > 100:
-                    self.progress = 100
-                elif self.progress < 0:
-                    self.progress = 0
-                return True
-            elif self.type == PLAN_REPLY:
-                return True
-
-            self.producer = parser.find(self._tagproducer).text.strip()
-            self.name = parser.find(self._tagname).text.strip()
-            self.description = parser.find(self._tagdescription).text.strip()
-            strdate = str(parser.find(self._tagstart).text.strip())
-            for strdate in [parser.find(self._tagstart).text.strip(),parser.find(self._tagend).text.strip()]:
-                if re.match('\d\d-[0-1]?[0-9]-[0-1]?[0-9]',strdate) is None:
-                    lerror('',('plan date format is wrong(%s),right format is yy-mm-dd. ' % strdate))
-                    return False
-            self.start = datetime.datetime.strptime(parser.find(self._tagstart).text.strip(),"%y-%m-%d")
-            #strptime只接受年为两位，0-68就是20XX，69-99就是19XX
-            self.end = datetime.datetime.strptime(parser.find(self._tagend).text.strip(),"%y-%m-%d")
-            if self.start > self.end:
-                lerror('','开始时间晚于结束时间')
-                return False
-            self.boss = parser.find(self._tagboss).text.strip()
-            element = parser.findall(self._tagteammate)
-            self.teammates = []
-            for child in element:
-                self.teammates.append(child.text.strip())
-            return True
-        except Exception as e:
-            lerror('',str(e))
-            return False
+            return backplans.querybyid(id)
 
 def test():
     p = plan()

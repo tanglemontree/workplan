@@ -1,10 +1,10 @@
 __author__ = 'twt'
 from log import *
-from net import netmng
+from net import netmng,getlocalip
 from user import user,usermng,org,orgmng
 from base import mpath,datapack,net_data,sys_para,ipaddress
 from socket import gethostname
-from plan import plan,backplans,curplans,totalplans
+from plan import plan,backplans,curplans,totalplans,PLAN_REMOVE
 from xml.etree.cElementTree import XML,Element
 from datetime import datetime
 class mainproc:
@@ -19,11 +19,58 @@ class mainproc:
                 lwarn(self._modulename,"未建立账户，程序退出")
                 return
             else:
-                usermng.instance().setadmin(u)
-                usermng.instance().writetofile()
-        print('welcome '+usermng.instance().getadmin().nickname + '!')
+                u.addr = ipaddress(getlocalip(),sys_para.NET_UDPRPORT)
+        else:
+            u = usermng.instance().getadmin()
+            u.addr = ipaddress(getlocalip(),sys_para.NET_UDPRPORT)
 
+        usermng.instance().setadmin(u)
+        usermng.instance().writetofile()
+        print('welcome '+usermng.instance().getadmin().nickname + '!')
         self._netmng = netmng.netmng()
+
+        dpack = datapack()
+        xdoc = ''' <datapack>
+        <data_body username= "tang" nickname = "tom" type ="workplan">
+        <plans>
+        <plan>
+<producer>manager</producer>
+<id>342343</id>
+<type>add</type>
+<name>需求阶段</name>
+<description>软件需求文档</description>
+<start>16-9-12</start>
+<end>16-9-16</end>
+<boss>tang7TEIVUETKULYA2F</boss>
+<teammate>bob</teammate>
+<teammate>lucy</teammate>
+<progress>90</progress >
+</plan>
+<plan>
+<producer>manager</producer>
+<id>23343</id>
+<type>add</type>
+<name>需求阶段</name>
+<description>软件需求文档</description>
+<start>16-9-18</start>
+<end>16-9-26</end>
+<boss>gates</boss>
+<teammate>tang7TEIVUETKULYA2F</teammate>
+<teammate>lucy</teammate>
+<progress>90</progress >
+</plan>
+</plans>
+        </data_body>
+        </datapack>'''
+        dpack.parsexml(xdoc)
+        top = XML(dpack.body)
+        for c in top.find('plans').getchildren():
+            p = plan()
+            p.parsexml(c)
+            curplans.instance().add(p)
+        curplans.instance().writetofile()
+
+
     def create_account(self):
         u = user()
         u.name = input("You need create your account.Please input your name:")
@@ -49,11 +96,17 @@ class mainproc:
     def oncmd(self,cmd):
         cmd = cmd.strip()
         if cmd == 'online':
-            self._netmng.sendlineinfo(sys_para.NET_GROUPADDR,True)
+            self._netmng.sendlineinfo(ipaddress(sys_para.NET_GROUPADDR,sys_para.NET_GROUPRPORT),True,False)
         elif cmd == 'offline':
-            self._netmng.sendlineinfo(sys_para.NET_GROUPADDR,False)
+            self._netmng.sendlineinfo(ipaddress(sys_para.NET_GROUPADDR,sys_para.NET_GROUPRPORT),False,False)
         elif cmd[0:8] == 'add plan':#add plan [plan_xml]
             self.addplan(cmd[8:])
+        elif cmd[0:11] == 'remove plan':
+            self.removeplan(cmd[11:])
+        elif cmd[0:9] == 'edit plan':
+            self.editplan(cmd[9:])
+        elif cmd[0:9] == 'send plan':#'send plan [index]:
+            self.sendplan(cmd[10:])
         elif cmd == 'userlist':
             self.showuserlist()
         elif cmd == 'planlist':
@@ -62,33 +115,57 @@ class mainproc:
             tmp = cmd[11:].split(' ')
             if len(tmp) != 2:
                 print('input wrong cmd.(query plan yy-mm-dd yy-mm-dd')
+                return
             self.queryplan(tmp[0],tmp[1])
         elif cmd[0:8] == 'add user':
             self.adduser(cmd[8:])
 
-        elif cmd[0:9] == 'send plan':#'send plan [index]:
-            self.sendplan(cmd[10:])
+        elif cmd[0:10] == 'addorguser':
+            cmds = cmd[11:].split(' ')
+            if len(cmds) != 2:
+                print('wrong cmd(addorguser orgname username')
+                return
+            self.addorguser(cmds[0],cmds[1])
+        elif cmd[0:7] == 'orginfo':
+            self.showorginfo()
+        elif cmd[0:10] == 'create org':
+            cmds = cmd[11:].split(' ')
+            if len(cmds) == 3:
+                self.createorg(cmds[0],cmds[1],cmds[2])
+            else:
+                print('cmd format is wrong.(create org orgname nickname password')
+
         else:
             print('unkown cmd!')
             return
 
     def adduser(self,cmd):
         cmd = cmd.strip()
-        cmds = cmd.split(',')
-        u = user(name =cmds[0],nickname= cmds[1],addr = ipaddress(cmds[2],cmd[3]),online=True)
+        cmds = cmd.split(' ')
+        if len(cmds) < 5:
+            print('cmd error (add user name nickname ip port email')
+        u = user(name =cmds[0],nickname= cmds[1],addr = ipaddress(cmds[2],int(cmds[3])),online=True)
+        u.email = cmds[4]
         usermng.instance().add(u)
         usermng.instance().writetofile()
     def showuserlist(self):
-         [print(i.nickname+'(' + i.name+'):' + "  IP:"+ i.addr.ip+ ('  online' if i.online else '  offline')   )for i in usermng.instance().list()]
+         [print(i.nickname+'(' + i.name+'):' + "  IP:"+ i.addr.ip + ('  online' if i.online else '  offline')   )for i in usermng.instance().list()]
     def showcurplan(self):
         self._showplan(curplans.instance().list())
+    def showorginfo(self):
+        for orgname in orgmng.instance().map().keys():
+            users = ''
+            for u in orgmng.instance().getuserlist(orgname).list():
+                users += u.name + "  "
+            print('[org] ' + orgname + " :"+users)
     def sendplan(self,index):
 #        index = '0,2'
-        if index.count(',') == 0:
+        if index.count(' ') == 0:
+            n = int(index)
             if int(n) < len(curplans.instance().list()):
                 self._netmng.sendplans([curplans.instance().list()[int(index)]])
         else:
-            nindex = index.split(',')
+            nindex = index.split(' ')
             plans = []
             for n in nindex:
                 if int(n) < len(curplans.instance().list()):
@@ -118,12 +195,26 @@ class mainproc:
             pl.setid()
             curplans.instance().add(pl)
         curplans.instance().writetofile()
+    def removeplan(self,cmd):
+        index = int(cmd.strip())
+        if index < len(curplans.instance().list()):
+            _plan = curplans.instance().list()[index]
+            _plan.type = PLAN_REMOVE
+            curplans.instance().remove(_plan.id)
+            backplans.instance().add(_plan)
+            self._netmng.sendplans([_plan])
+    def editplan(self,cmd):#test
+        index = int(cmd.strip())
+        if index < len(curplans.instance().list()):
+            _plan = curplans.instance().list()[index]
+            _plan.description = 'edit plan'
+            self._netmng.sendplans([_plan])
     def createorg(self,orgname,nickname,password):
         creator = usermng.instance().getadmin().name
         neworg = org(orgname,nickname,password,creator)
         orgmng.instance().addorg(neworg)
     def addorguser(self,orgname,username):
-        self._netmng.add(orgname,username)
+        self._netmng.addorguser(orgname,username)
     def queryplan(self,start,end):
     #    start = '2015-12-3'
     #    end = '16-12-1'

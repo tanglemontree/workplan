@@ -65,19 +65,12 @@ class mlog:
         #TODO
         return
     def warn(self,modulename,msg,mode = 'normal'):
-        sinfo = None
-        try:
-            fn, lno, func, sinfo = self.findCaller(True)
-        except ValueError: # pragma: no cover
-            fn, lno, func,sinfo = "(unknown file)", 0, "(unknown function)",""
         if mode == 'many':
             self.procmanylog(modulename,msg)
             return
         else:
-            self._log.warning(msg,extra = {'modulename': sinfo})
-        print('processlog')
+            self._log.warning(msg,extra = {'modulename': modulename})
         self.processlog(modulename,msg,mode)
-        print('ok')
 
     def info(self,modulename,msg,mode = 'normal'):
         if mode == 'many':

@@ -22,8 +22,9 @@ class en_dp_type(Enum):
     orginfo = 3
 
 class sys_para():
-    NET_LOCALPORT = 12321
-    NET_DESTPORT = 18686
+    NET_LOCALPORT = 12321  #发送socket绑定端口号
+    NET_UDPRPORT = 18687   #UDP 接收端口号
+    NET_GROUPRPORT = 18686  #组播收端口
     NET_GROUPADDR = '231.22.33.44'
     NET_BUFSIZE = 20000
 
@@ -74,19 +75,19 @@ class datapack:
                 self.username = element.attrib.get(self.tag_username)
                 self.type = element.attrib.get(self.tag_type)
                 self.nickname = element.attrib.get(self.tag_nickname)
-                c = list(element)
-                if len(c) == 0:
-                    self.body = element.text
-                else:
-                    for sub in c:
-                        self.body = self.body + tostring(sub,'utf-8').decode('utf-8')
-                        #TODO
+                self.body = tostring(element,'utf-8').decode('utf-8')
+
+                # c = list(element)
+                # if len(c) == 0:
+                #     self.body = element.text
+                # else:
+                #     for sub in c:
+                #         self.body = self.body + tostring(sub,'utf-8').decode('utf-8')
+                #         #TODO
                 return True
         except Exception as e:
             print('%s:%s'%(self.__modulename,e))
-    def parsedata(self):
-        if self.type == en_dp_type.connectstatus.name:
-            return self.type,self.body
+
     def formatxml(self):
         top = Element('datapack')
 
@@ -100,18 +101,13 @@ class datapack:
         child.set(self.tag_username,self.username)
         child.set(self.tag_type,self.type)
         """
-        xdoc = '<body>'+self.body+'</body>'
-        bodyelement = XML(xdoc)
+
+        bodyelement = XML(self.body)
         if len(bodyelement.getchildren()) > 0:
             for i in bodyelement.getchildren():
                 child.append(i)
-        else:
-            child.text = self.body
-
-
         str = tostring(top,'utf-8').decode('utf-8')
        # print(str)
-
         return str
 def test():
     mylog.__loglevel__ = mylog.ERROR

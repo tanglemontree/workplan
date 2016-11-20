@@ -9,21 +9,25 @@ class udpsocket:
         self._sock = socket(AF_INET,SOCK_DGRAM)
         self.__buffsize = buffsize
         try:
+            self._sock.setsockopt(SOL_SOCKET, SO_RCVBUF, self.__buffsize)
+            self._sock.setsockopt(SOL_SOCKET, SO_SNDBUF,self.__buffsize)
+            self._sock.setsockopt(SOL_SOCKET, SO_REUSEADDR, 1)
+            self._sock.setsockopt(SOL_SOCKET,IP_TTL,2)
+
             b = self._sock.bind(self._addr)
             print('bind success')
         except Exception as e:
             print('error %s'%e)
             return
-        self._sock.setsockopt(SOL_SOCKET, SO_RCVBUF, self.__buffsize)
-        self._sock.setsockopt(SOL_SOCKET, SO_SNDBUF,self.__buffsize)
-        self._sock.setsockopt(SOL_SOCKET, SO_REUSEADDR, 1)
+
         
-        self._sock.settimeout(3)
+        self._sock.settimeout(1)
         ttl = struct.pack('b',2)
-        self._sock.setsockopt(IPPROTO_IP,IP_MULTICAST_TTL,ttl)
+
         if local_addgroup is not INADDR_NONE:
             group = inet_aton(local_addgroup)
             mrep = struct.pack('4sl',group,INADDR_ANY)
+            self._sock.setsockopt(IPPROTO_IP,IP_MULTICAST_TTL,ttl)
             self._sock.setsockopt(IPPROTO_IP,IP_ADD_MEMBERSHIP,mrep)
      
     def send(self,destip,destport,data):
@@ -39,7 +43,7 @@ class udpsocket:
             if not data:
                return None,None
             else:
-             #   print('recv,%s'%data)
+            #    print('recv,%s'%data)
                 return (data,peerip)
         except Exception as e:
             if ('%s' %e) != 'timed out':
