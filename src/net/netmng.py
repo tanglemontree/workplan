@@ -1,35 +1,41 @@
 # -*- coding:utf-8 -*-
-__author__ = 'sun'
-from . import dataproc,udprecvthd,udpsendthd
-from base import net_data,datapack,sys_para,ipaddress
+__author__ = 'twt'
+from . import dataprocess, udprecvthd, udpsendthd
+from base import DataPack, Sys_Para, IpAddress
 from time import sleep
 from .psocket import getlocalip
-from user import user,usermng
+from user import User, UserMng
 from socket import INADDR_NONE
-class netmng():
+
+
+class NetMng():
     def __init__(self):
         self.create()
+
     def create(self):
-        self._dataproc = dataproc.dataproc()
+        self._dataproc = dataprocess.DataProcess()
         self._dataproc.start()
 
-        self._sendthd = udpsendthd.udpsendthd()
+        self._sendthd = udpsendthd.UdpSendThd()
         self._sendthd.start()
         sleep(1)
-        self._dataproc.setthread(send = self._sendthd)
-        self._recvp2p = udprecvthd.udprecvthd(self._dataproc,getlocalip(),sys_para.NET_UDPRPORT,sys_para.NET_BUFSIZE,INADDR_NONE)
+        self._dataproc.setthread(send=self._sendthd)
+        self._recvp2p = udprecvthd.UdpRecvThd(self._dataproc, getlocalip(),
+                                              Sys_Para.NET_UDPRPORT,
+                                              Sys_Para.NET_BUFSIZE, INADDR_NONE)
         self._recvp2p.start()
 
-        self._recvthd = udprecvthd.udprecvthd(self._dataproc,getlocalip(),sys_para.NET_GROUPRPORT,sys_para.NET_BUFSIZE,sys_para.NET_GROUPADDR)
+        self._recvthd = udprecvthd.UdpRecvThd(self._dataproc, getlocalip(),
+                                              Sys_Para.NET_GROUPRPORT,
+                                              Sys_Para.NET_BUFSIZE,
+                                              Sys_Para.NET_GROUPADDR)
         self._recvthd.start()
         sleep(1)
-        self._dataproc.sendlineinfo( ipaddress(sys_para.NET_GROUPADDR,sys_para.NET_GROUPRPORT),True,False)#广播上线信息
+        self._dataproc.sendlineinfo( IpAddress(Sys_Para.NET_GROUPADDR,
+                                               Sys_Para.NET_GROUPRPORT),
+                                     True, False)  # 广播上线信息
 
-
-
-
-
-        dpack = datapack()
+        dpack = DataPack()
         xdoc = ''' <datapack>
         <data_body username= "tang" nickname = "tom" type ="workplan">
         <plans>
@@ -92,17 +98,19 @@ class netmng():
         dpack.parsexml(xdoc)
 #        data = net_data(sys_para.NET_GROUPADDR,sys_para.NET_GROUPRPORT,dpack.formatxml().encode('utf-8'),False)
 #        self._sendthd.write(data)
+#        print('send over')
 
-       # print('send over')
+    def sendlineinfo(self, ip, status, isreply):
+        self._dataproc.sendlineinfo(ip, status, isreply)
 
-    def sendlineinfo(self,ip,status,isreply):
-        self._dataproc.sendlineinfo(ip,status,isreply)
-    def sendplans(self,plans):
+    def sendplans(self, plans):
         self._dataproc.sendplans(plans)
-    def addorguser(self,orgname,username):
-        self._dataproc.addorguser(orgname,username)
+
+    def addorguser(self, orgname, username):
+        self._dataproc.addorguser(orgname, username)
+
     def exit(self):
-        self.sendlineinfo(ipaddress(sys_para.NET_GROUPADDR,sys_para.NET_GROUPRPORT),False,False)
+        self.sendlineinfo(IpAddress(Sys_Para.NET_GROUPADDR, Sys_Para.NET_GROUPRPORT), False, False)
         sleep(0.4)
         self._sendthd.stop()
         self._recvthd.stop()
@@ -110,10 +118,8 @@ class netmng():
         self._dataproc.stop()
 
 
-
-
 def main():
-    netapp = netmng()
+    netapp = NetMng()
     netapp.create()
     sleep(3)
     netapp.exit()

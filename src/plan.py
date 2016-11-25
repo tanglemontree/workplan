@@ -1,12 +1,10 @@
 # -*- coding:utf-8 -*-
 __author__ = 'tang'
 import datetime
-from xml.etree.ElementTree import (XML,Element,ElementTree,parse,
-                                               Comment,SubElement,tostring)
-from xml.dom.minidom import parseString
+from xml.etree.ElementTree import (XML, Element, parse, SubElement, tostring)
 import re
-from log import linfo,lerror
-from base import prettystr,mpath
+from log import linfo, lerror
+from base import prettystr, MPath
 import uuid
 import copy
 import os
@@ -18,10 +16,10 @@ PLAN_DONE = 'done'
 PLAN_REPORT = 'report'
 PLAN_REPLY = 'reply'
 __curplanlist_instance__ = None
-__backplanlist_onstance__ = None
+__backplanlist_instance__ = None
 
 
-class plan():
+class Plan():
     def __init__(self):
         self.producer = ''
         self.id = ''
@@ -48,8 +46,9 @@ class plan():
         self._tagprogress = 'progress'
         self._tagreport = 'report'
 
-    def setid(self):#只有在生成计划时才需要调用，后续该计划的操作不能再调用该函数，id是计划唯一标识
+    def setid(self):  # 只有在生成计划时才需要调用，后续该计划的操作不能再调用该函数，id是计划唯一标识
         self.id = str(uuid.uuid1())
+
     def tostring(self):
         mates = ''
         for i in self.teammates:
@@ -57,47 +56,52 @@ class plan():
         return 'producer:' + self.producer + '  id=' + self.id + '  起止时间:' + self.start.strftime('%y-%m-%d') + \
             '  ' + self.end.strftime('%y-%m-%d') + '\r\n        名字:' + self.name + '  内容:'+self.description + \
             '  boss:' + self.boss + ' mates:' + mates + ' progess:' + str(self.progress)
-    def isboss(self,name):
+
+    def isboss(self, name):
         if self.boss == name.strip():
             return True
         else:
             return False
-    def isproducer(self,name):
+
+    def isproducer(self, name):
         if self.producer == name.strip():
             return True
         else:
             return False
-    def addreport(self,plan):
+
+    def addreport(self, plan):
         self.progress = plan.progress
         self.report = self.report + plan.report
-    def isteammate(self,name):
+
+    def isteammate(self, name):
         if self.teammates.count(name.strip()) > 1:
             return True
         else:
             return False
+
     def formatxml(self):
         try:
             top = Element('plan')
             if len(self.orgname) > 0:
-                SubElement(top,self._tagorgname).text = self.orgname
-            SubElement(top,self._tagproducer).text = self.producer
-            SubElement(top,self._tagid).text = str(self.id)
-            SubElement(top,self._tagtype).text = self.type
-            SubElement(top,self._tagname).text = self.name
-            SubElement(top,self._tagdescription).text = self.description
-            SubElement(top,self._tagstart).text = self.start.strftime('%y-%m-%d')
-            SubElement(top,self._tagend).text = self.end.strftime('%y-%m-%d')
-            SubElement(top,self._tagboss).text = self.boss
+                SubElement(top, self._tagorgname).text = self.orgname
+            SubElement(top, self._tagproducer).text = self.producer
+            SubElement(top, self._tagid).text = str(self.id)
+            SubElement(top, self._tagtype).text = self.type
+            SubElement(top, self._tagname).text = self.name
+            SubElement(top, self._tagdescription).text = self.description
+            SubElement(top, self._tagstart).text = self.start.strftime('%y-%m-%d')
+            SubElement(top, self._tagend).text = self.end.strftime('%y-%m-%d')
+            SubElement(top, self._tagboss).text = self.boss
 
             for mate in self.teammates:
-                SubElement(top,self._tagteammate).text = mate
-            SubElement(top,self._tagprogress).text = str(self.progress)
+                SubElement(top, self._tagteammate).text = mate
+            SubElement(top, self._tagprogress).text = str(self.progress)
             if self.type == PLAN_REPORT:
                 for report in self.report:
-                    SubElement(top,self._tagreport).text = report
-            return tostring(top,'utf-8').decode('utf-8')
+                    SubElement(top, self._tagreport).text = report
+            return tostring(top, 'utf-8').decode('utf-8')
         except Exception as e:
-            lerror('',str(e))
+            lerror('', str(e))
             return ''
 
     def parsexml(self, parser):
@@ -121,15 +125,15 @@ class plan():
             self.name = parser.find(self._tagname).text.strip()
             self.description = parser.find(self._tagdescription).text.strip()
             strdate = str(parser.find(self._tagstart).text.strip())
-            for strdate in [parser.find(self._tagstart).text.strip(),parser.find(self._tagend).text.strip()]:
-                if re.match('\d\d-[0-1]?[0-9]-[0-1]?[0-9]',strdate) is None:
-                    lerror('',('plan date format is wrong(%s),right format is yy-mm-dd. ' % strdate))
+            for strdate in [parser.find(self._tagstart).text.strip(), parser.find(self._tagend).text.strip()]:
+                if re.match('\d\d-[0-1]?[0-9]-[0-1]?[0-9]', strdate) is None:
+                    lerror('', ('plan date format is wrong(%s),right format is yy-mm-dd. ' % strdate))
                     return False
-            self.start = datetime.datetime.strptime(parser.find(self._tagstart).text.strip(),"%y-%m-%d")
-            #strptime只接受年为两位，0-68就是20XX，69-99就是19XX
-            self.end = datetime.datetime.strptime(parser.find(self._tagend).text.strip(),"%y-%m-%d")
+            self.start = datetime.datetime.strptime(parser.find(self._tagstart).text.strip(), "%y-%m-%d")
+            # strptime只接受年为两位，0-68就是20XX，69-99就是19XX
+            self.end = datetime.datetime.strptime(parser.find(self._tagend).text.strip(), "%y-%m-%d")
             if self.start > self.end:
-                lerror('','开始时间晚于结束时间')
+                lerror('', '开始时间晚于结束时间')
                 return False
             self.boss = parser.find(self._tagboss).text.strip()
             element = parser.findall(self._tagteammate)
@@ -138,31 +142,34 @@ class plan():
                 self.teammates.append(child.text.strip())
             return True
         except Exception as e:
-            lerror('',str(e))
+            lerror('', str(e))
             return False
 
 
-
-class planlist():
-    def __init__(self,planname):
+class PlanList():
+    def __init__(self, planname):
         self._planlist = []
         self._planname = planname
         self.readfromfile()
+
     def list(self):
         return self._planlist
-    def querybyid(self,plan):
+
+    def querybyid(self, plan):
         index = self._index(plan)
         return self._planlist[index] if index > -1 else None
-    def add(self,pl):
+
+    def add(self, pl):
         plan = copy.deepcopy(pl)
         if True in [plan.id == p.id for p in self._planlist]:
             return self.edit(plan)
         else:
             self._planlist.append(plan)
-            cp = lambda x,y: (x.start - y.start).days
-            self._planlist.sort(key = cmp_to_key(cp))
+            cp = lambda x, y: (x.start - y.start).days
+            self._planlist.sort(key=cmp_to_key(cp))
             return True
-    def _index(self,pl):
+
+    def _index(self, pl):
         plan = copy.deepcopy(pl)
         tmp = [plan.id == p.id for p in self._planlist]
         if tmp.count(True) > 0:
@@ -170,123 +177,134 @@ class planlist():
         else:
             index = -1
         return index
-    def edit(self,pl:plan):
+
+    def edit(self, pl: Plan):
         _plan = copy.deepcopy(pl)
         index = self._index(_plan)
-        if  index>= 0:
+        if index >= 0:
             self._planlist[index] = _plan
             return True
         else:
             return False
-    def remove(self,id):
-        p = plan()
+
+    def remove(self, id):
+        p = Plan()
         p.id = id
         index = self._index(p)
         if index >= 0:
             self._planlist.pop(index)
-    def done(self,plan):
+
+    def done(self, plan):
         pl = copy.deepcopy(plan)
         pl.progess = 100
         self.remove(pl.id)
         return pl
         #TODO
-    def writetofile(self):
-        filepath = mpath.inistance().getdatapath() + self._planname
+
+    def writefile(self):
+        filepath = MPath.instance().getdatapath() + self._planname
         if len(self._planlist) == 0:
             return
         top = Element('plans')
         for p in self._planlist:
             top.append(XML(p.formatxml()))
 
-        with open(filepath,mode = 'wb') as f:
-            f.write(prettystr(top,'utf-8'))
+        with open(filepath, mode='wb') as f:
+            f.write(prettystr(top, 'utf-8'))
             f.close()
 
     def readfromfile(self):
-        filepath = mpath.inistance().getdatapath() + self._planname
-        if os.path.exists(filepath) == False:
+        filepath = MPath.instance().getdatapath() + self._planname
+        if not os.path.exists(filepath):
             return
         try:
             parser = parse(filepath).getroot()
-            if parser == None:
+            if parser is None:
                 return
             else:
-                 self._planlist = []
-                 for p in parser.getchildren():
-                     pl = plan()
-                     pl.parsexml(p)
-                     self.add(pl)
+                self._planlist = []
+                for p in parser.getchildren():
+                    pl = Plan()
+                    pl.parsexml(p)
+                    self.add(pl)
         except Exception as e:
-            lerror('',repr(e))
+            lerror('', repr(e))
 
 
-class curplans(planlist):
+class CurPlans(PlanList):
     def __init__(self):
         global __curplanlist_instance__
-        if __curplanlist_instance__ != None:
+        if __curplanlist_instance__ is not None:
             return
-        planlist.__init__(self,'curplan.xml')
+        PlanList.__init__(self,'curplan.xml')
+
     @staticmethod
     def instance():
-        global  __curplanlist_instance__
-        if __curplanlist_instance__ == None:
-            __curplanlist_instance__ = curplans()
+        global __curplanlist_instance__
+        if __curplanlist_instance__ is None:
+            __curplanlist_instance__ = CurPlans()
             __curplanlist_instance__.readfromfile()
         return __curplanlist_instance__
-    def processbytype(self,pl):
+
+    def processbytype(self, pl):
         plan = copy.deepcopy(pl)
         if plan.type == PLAN_ADD:
             print('add plan')
             self.add(plan)
         elif plan.type == PLAN_DONE:
             pl = self.done(plan)
-            backplans.instance().add(pl)
-            backplans.instance().writetofile()
+            BackPlans.instance().add(pl)
+            BackPlans.instance().writefile()
         elif plan.type == PLAN_EDIT:
             print('edit plan')
             self.edit(plan)
         elif plan.type == PLAN_REMOVE:
             self.remove(plan.id)
 
-class backplans(planlist):
+
+class BackPlans(PlanList):
     def __init__(self):
-        global __backplanlist_onstance__
-        if __backplanlist_onstance__ != None:
+        global __backplanlist_instance__
+        if __backplanlist_instance__ is not None:
             return
-        planlist.__init__(self,'history_plan.xml')
+        PlanList.__init__(self, 'history_plan.xml')
+
     @staticmethod
     def instance():
-        global __backplanlist_onstance__
-        if __backplanlist_onstance__ == None:
-            __backplanlist_onstance__ = backplans()
-            __backplanlist_onstance__.readfromfile()
-        return __backplanlist_onstance__
+        global __backplanlist_instance__
+        if __backplanlist_instance__ is None:
+            __backplanlist_instance__ = BackPlans()
+            __backplanlist_instance__.readfromfile()
+        return __backplanlist_instance__
 
-class totalplans():
+
+class TotalPlans():
     @staticmethod
-    def queryplans(start,end):
-        plans = []
-        cp = lambda x,y: (x.start - y.start).days
-        def query(src,start,end):
+    def queryplans(start, end):
+        cp = lambda x, y: (x.start - y.start).days
+
+        def query(src, istart, iend):
             dest = []
             for p in src:
-                if (p.start - end).days > 0 or (start - p.end).days > 0:
+                if (p.start - iend).days > 0 or (istart - p.end).days > 0:
                     pass
                 else:
                     dest.append(p)
             return dest
-        plans = query(curplans.instance().list(),start,end) + query(backplans.instance().list(),start,end)
-        plans.sort(key = cmp_to_key(cp))
+        plans = query(CurPlans.instance().list(), start, end) + query(BackPlans.instance().list(), start, end)
+        plans.sort(key=cmp_to_key(cp))
         return plans
-    def queryplanbyid(self,id):
-        pl1 = curplans.instance().querybyid(id)
+
+    def queryplanbyid(self, id):
+        pl1 = CurPlans.instance().querybyid(id)
         if pl1 is not None:
             return pl1
         else:
-            return backplans.querybyid(id)
+            return BackPlans.querybyid(id)
+
 
 def test():
-    p = plan()
+    p = Plan()
 
     xdoc = '''
 <plan>
@@ -306,10 +324,10 @@ def test():
     parser = XML(xdoc)
     p.parsexml(parser)
     print(p.formatxml())
-    ps = planlist()
+    ps = PlanList()
     ps.add(p)
 
-    ps.writetofile()
+    ps.writefile()
 #test()
 
 

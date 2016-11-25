@@ -1,7 +1,7 @@
 # -*- coding:utf-8 -*-
 from unittest import TestCase
 
-__author__ = 'sun'
+__author__ = 'twt'
 
 
 class TestUser(TestCase):

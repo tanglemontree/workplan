@@ -1,4 +1,4 @@
 # -*- coding:utf-8 -*-
-__author__ = 'sun'
+__author__ = 'twt'
 from .psocket import getlocalip
-__all__ = {'dataproc','netmng','getlocalip'}
+__all__ = {'DataProcess', 'NetMng', 'getlocalip'}
